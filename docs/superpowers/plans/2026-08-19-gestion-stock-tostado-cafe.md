@@ -52,8 +52,14 @@
 
 ```bash
 npm install next@14 react@18 react-dom@18 drizzle-orm @libsql/client zod clsx
-npm install -D typescript @types/react @types/node @types/react-dom tailwindcss postcss autoprefixer drizzle-kit vitest dotenv
+npm install -D typescript @types/react @types/node @types/react-dom tailwindcss postcss autoprefixer drizzle-kit vitest dotenv "eslint@^8.57.0" "eslint-config-next@14"
 ```
+
+Note: `eslint`/`eslint-config-next` are pinned to versions compatible with
+Next 14's `next lint` (which uses the legacy eslintrc API). Installing
+unpinned `eslint`/`eslint-config-next` resolves to ESLint 9+, whose default
+`ESLint` class is flat-config-only and rejects the `useEslintrc`/`extensions`
+options Next 14 passes internally, making `next lint` throw.
 
 - [ ] **Step 3: Create `tsconfig.json`**
 
@@ -220,7 +226,18 @@ dist
 coverage
 ```
 
-- [ ] **Step 14: Create `README.md`**
+- [ ] **Step 14: Create `.eslintrc.json`**
+
+```json
+{
+  "extends": "next/core-web-vitals"
+}
+```
+
+Without this file, `next lint` (used in Task 12) launches an interactive
+first-run setup prompt that hangs in a non-interactive shell.
+
+- [ ] **Step 15: Create `README.md`**
 
 ```markdown
 # App Café — Control de Stock de Tostado
@@ -245,12 +262,12 @@ merma pactada.
 - `npm run db:generate` / `npm run db:push` — migraciones Drizzle contra Turso
 ```
 
-- [ ] **Step 15: Verify dev server boots**
+- [ ] **Step 16: Verify dev server boots**
 
 Run: `npm run dev -- --port 3100 &` then `curl -s -o /dev/null -w "%{http_code}" http://localhost:3100` (or open in browser), then stop the server.
 Expected: HTTP 200, page renders "Cargando…".
 
-- [ ] **Step 16: Commit**
+- [ ] **Step 17: Commit**
 
 ```bash
 git add -A
@@ -305,17 +322,32 @@ import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
 import * as schema from './schema';
 
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL ?? '',
-  authToken: process.env.TURSO_AUTH_TOKEN,
+type DbInstance = ReturnType<typeof drizzle<typeof schema>>;
+
+let instance: DbInstance | null = null;
+
+function getInstance(): DbInstance {
+  if (!instance) {
+    const client = createClient({
+      url: process.env.TURSO_DATABASE_URL ?? '',
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+    instance = drizzle(client, { schema });
+  }
+  return instance;
+}
+
+// `createClient` throws synchronously if the URL is missing/invalid. Next.js
+// imports every route module during `next build` (even force-dynamic ones) to
+// collect page data, so calling createClient() at module-eval time would break
+// the build whenever `.env.local` isn't set up yet. This Proxy defers the real
+// client creation until the first actual query at request time.
+export const db = new Proxy({} as DbInstance, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getInstance(), prop, receiver);
+  },
 });
-
-export const db = drizzle(client, { schema });
 ```
-
-Note: URL/token are read lazily at request time (pages use `force-dynamic`), so
-missing env vars don't break `npm run build`. They will surface as a runtime
-error only when a page actually queries the DB without real credentials.
 
 - [ ] **Step 3: Create `drizzle.config.ts`**
 
