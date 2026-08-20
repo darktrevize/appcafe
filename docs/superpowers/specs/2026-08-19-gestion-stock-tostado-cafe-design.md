@@ -37,6 +37,22 @@ Ejemplo: 20 bolsas × 3 kg = 60 kg tostados → 60 / 0.83 = 72.29 kg de verde co
   de verde en negativo, el movimiento se guarda igual (refleja la realidad) pero se
   marca visualmente (badge/color de alerta) tanto en la fila como en el KPI de
   stock remanente.
+- **Merma editable puntualmente por remito.** El formulario permite, opcionalmente,
+  sobreescribir el % de merma para un remito de recepción de tostado puntual
+  (ej. el tostadero pactó una condición distinta esa vez). El servidor acepta un
+  `mermaPct` opcional en el schema Zod de `crearMovimiento`; si no viene, usa
+  `configuracion.mermaPctDefault`. En ambos casos el servidor recalcula
+  `kgTostado`/`kgVerdeConsumido` y persiste el valor efectivamente usado en
+  `mermaPctAplicada`.
+- **Un solo `saldo_inicial` esperado, no forzado.** El modelo no impone una
+  restricción de unicidad sobre filas `tipo = 'saldo_inicial'`; es responsabilidad
+  del usuario cargar una sola. Si carga una por error, se corrige borrándola (no
+  hay edición).
+- **Validaciones numéricas.** Los schemas Zod validan `kgVerde`, `bolsas`,
+  `pesoBolsaKg` y `mermaPct` como números positivos (`> 0`).
+- **Dark mode y componentes UI propios.** Se confirma UI en modo oscuro con
+  Tailwind y primitivos de UI livianos hechos a mano (sin librería externa tipo
+  shadcn/MUI).
 
 ## 3. Alcance
 
