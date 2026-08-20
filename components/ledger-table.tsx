@@ -1,4 +1,5 @@
 import { calcularArrastre, type Movimiento } from '@/lib/calculo';
+import { formatKg } from '@/lib/format';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { DeleteButton } from './delete-button';
@@ -8,11 +9,6 @@ const tipoBadge: Record<Movimiento['tipo'], { label: string; variant: 'inicial' 
   ingreso_verde: { label: 'Ingreso verde', variant: 'verde' },
   recepcion_tostado: { label: 'Recepción tostado', variant: 'tostado' },
 };
-
-function formatKg(valor: number | null) {
-  if (valor === null) return '—';
-  return valor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export function LedgerTable({ movimientos }: { movimientos: Movimiento[] }) {
   const conSaldo = calcularArrastre(movimientos).slice().reverse();
@@ -71,7 +67,7 @@ export function LedgerTable({ movimientos }: { movimientos: Movimiento[] }) {
                 >
                   {formatKg(m.saldoVerde)}
                   {saldoNegativo && (
-                    <Badge variant="alerta" className="ml-2">
+                    <Badge variant="alerta" className="ml-2" aria-label="Saldo negativo">
                       !
                     </Badge>
                   )}

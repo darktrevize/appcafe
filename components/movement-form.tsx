@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition, type FormEvent } from 'react';
 import { crearMovimiento } from '@/lib/actions';
 import { calcularKgTostado, calcularVerdeConsumido } from '@/lib/calculo';
+import type { CrearMovimientoInput } from '@/lib/validation';
 import { Card } from './ui/card';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
@@ -50,21 +51,45 @@ export function MovementForm({
     setNotas('');
   }
 
+  function buildInput(): CrearMovimientoInput {
+    const notasInput = notas || undefined;
+
+    if (tipo === 'recepcion_tostado') {
+      return {
+        tipo,
+        fecha,
+        numeroRemito,
+        bolsas: Number(bolsas),
+        pesoBolsaKg: Number(pesoBolsaKg),
+        mermaPct: mermaPct ? Number(mermaPct) : undefined,
+        notas: notasInput,
+      };
+    }
+
+    if (tipo === 'ingreso_verde') {
+      return {
+        tipo,
+        fecha,
+        kgVerde: Number(kgVerde),
+        numeroRemito,
+        notas: notasInput,
+      };
+    }
+
+    return {
+      tipo,
+      fecha,
+      kgVerde: Number(kgVerde),
+      numeroRemito: numeroRemito || undefined,
+      notas: notasInput,
+    };
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const input: Record<string, unknown> = { tipo, fecha, notas: notas || undefined };
-
-    if (tipo === 'recepcion_tostado') {
-      input.numeroRemito = numeroRemito;
-      input.bolsas = Number(bolsas);
-      input.pesoBolsaKg = Number(pesoBolsaKg);
-      input.mermaPct = mermaPct ? Number(mermaPct) : undefined;
-    } else {
-      input.kgVerde = Number(kgVerde);
-      if (tipo === 'ingreso_verde') input.numeroRemito = numeroRemito;
-    }
+    const input = buildInput();
 
     startTransition(async () => {
       const result = await crearMovimiento(input);

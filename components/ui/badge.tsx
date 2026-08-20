@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'react';
 import { clsx } from 'clsx';
 
-type BadgeVariant = 'neutral' | 'verde' | 'tostado' | 'inicial' | 'alerta';
+export type BadgeVariant = 'neutral' | 'verde' | 'tostado' | 'inicial' | 'alerta';
 
 const variantClasses: Record<BadgeVariant, string> = {
   neutral: 'bg-neutral-800 text-neutral-200',
@@ -11,7 +11,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   alerta: 'bg-red-950 text-red-400 border border-red-800',
 };
 
-interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
 }
 

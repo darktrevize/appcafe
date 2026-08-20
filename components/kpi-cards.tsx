@@ -2,10 +2,7 @@ import { clsx } from 'clsx';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import type { Kpis } from '@/lib/calculo';
-
-function formatKg(valor: number) {
-  return `${valor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
-}
+import { formatKg } from '@/lib/format';
 
 export function KpiCards({ kpis }: { kpis: Kpis }) {
   const remanenteNegativo = kpis.stockVerdeRemanente < 0;
@@ -23,25 +20,25 @@ export function KpiCards({ kpis }: { kpis: Kpis }) {
             remanenteNegativo ? 'text-red-400' : 'text-neutral-100'
           )}
         >
-          {formatKg(kpis.stockVerdeRemanente)}
+          {formatKg(kpis.stockVerdeRemanente)} kg
         </p>
       </Card>
       <Card>
         <p className="text-sm text-neutral-400">Total Verde Ingresado</p>
         <p className="mt-2 text-2xl font-semibold text-neutral-100">
-          {formatKg(kpis.totalVerdeIngresado)}
+          {formatKg(kpis.totalVerdeIngresado)} kg
         </p>
       </Card>
       <Card>
         <p className="text-sm text-neutral-400">Tostado Recibido</p>
         <p className="mt-2 text-2xl font-semibold text-neutral-100">
-          {formatKg(kpis.tostadoRecibido)}
+          {formatKg(kpis.tostadoRecibido)} kg
         </p>
       </Card>
       <Card>
         <p className="text-sm text-neutral-400">Verde Consumido (teórico)</p>
         <p className="mt-2 text-2xl font-semibold text-neutral-100">
-          {formatKg(kpis.verdeConsumidoTeorico)}
+          {formatKg(kpis.verdeConsumidoTeorico)} kg
         </p>
       </Card>
     </div>
