@@ -23,7 +23,8 @@ function getInstance(): DbInstance {
 // the build whenever `.env.local` isn't set up yet. This Proxy defers the real
 // client creation until the first actual query at request time.
 export const db = new Proxy({} as DbInstance, {
-  get(_target, prop, receiver) {
-    return Reflect.get(getInstance(), prop, receiver);
+  get(_target, prop) {
+    const real = getInstance();
+    return Reflect.get(real, prop, real);
   },
 });
