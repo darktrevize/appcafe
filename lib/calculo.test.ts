@@ -81,6 +81,8 @@ describe('calcularArrastre', () => {
 });
 
 describe('calcularKpis', () => {
+  const config = { mermaPctDefault: 17, pesoBolsaDefaultKg: 3 };
+
   it('resume stock remanente, ingresos, tostado recibido y verde consumido', () => {
     const movimientos: Movimiento[] = [
       mov({ id: 1, tipo: 'saldo_inicial', fecha: '2026-01-01', kgVerde: 500 }),
@@ -94,7 +96,7 @@ describe('calcularKpis', () => {
       }),
     ];
 
-    const kpis = calcularKpis(movimientos);
+    const kpis = calcularKpis(movimientos, config);
 
     expect(kpis.totalVerdeIngresado).toBe(100);
     expect(kpis.tostadoRecibido).toBe(60);
@@ -103,11 +105,70 @@ describe('calcularKpis', () => {
   });
 
   it('devuelve ceros cuando no hay movimientos', () => {
-    expect(calcularKpis([])).toEqual({
+    expect(calcularKpis([], config)).toEqual({
       stockVerdeRemanente: 0,
       totalVerdeIngresado: 0,
       tostadoRecibido: 0,
       verdeConsumidoTeorico: 0,
+      bolsasEntregadas: 0,
+      bolsasTeoricas: 0,
     });
+  });
+
+  it('suma bolsasEntregadas sobre varios movimientos recepcion_tostado', () => {
+    const movimientos: Movimiento[] = [
+      mov({ id: 1, tipo: 'saldo_inicial', fecha: '2026-01-01', kgVerde: 500 }),
+      mov({
+        id: 2,
+        tipo: 'recepcion_tostado',
+        fecha: '2026-01-05',
+        bolsas: 10,
+        kgTostado: 30,
+        kgVerdeConsumido: 36.14,
+      }),
+      mov({
+        id: 3,
+        tipo: 'recepcion_tostado',
+        fecha: '2026-01-10',
+        bolsas: 15,
+        kgTostado: 45,
+        kgVerdeConsumido: 54.22,
+      }),
+    ];
+
+    expect(calcularKpis(movimientos, config).bolsasEntregadas).toBe(25);
+  });
+
+  it('bolsasTeoricas usa la merma % default y NO redondea', () => {
+    const movimientos: Movimiento[] = [
+      mov({ id: 1, tipo: 'saldo_inicial', fecha: '2026-01-01', kgVerde: 100 }),
+    ];
+
+    // (100 * (1 - 17/100)) / 3 = 83 / 3 = 27.6666...
+    expect(calcularKpis(movimientos, config).bolsasTeoricas).toBeCloseTo(27.67, 2);
+  });
+
+  it('bolsasTeoricas se clampea a 0 cuando el remanente es negativo', () => {
+    const movimientos: Movimiento[] = [
+      mov({ id: 1, tipo: 'saldo_inicial', fecha: '2026-01-01', kgVerde: 10 }),
+      mov({
+        id: 2,
+        tipo: 'recepcion_tostado',
+        fecha: '2026-01-02',
+        kgTostado: 60,
+        kgVerdeConsumido: 72.29,
+      }),
+    ];
+
+    expect(calcularKpis(movimientos, config).bolsasTeoricas).toBe(0);
+  });
+
+  it('bolsasTeoricas devuelve 0 en vez de Infinity si pesoBolsaDefaultKg es 0', () => {
+    const movimientos: Movimiento[] = [
+      mov({ id: 1, tipo: 'saldo_inicial', fecha: '2026-01-01', kgVerde: 100 }),
+    ];
+
+    const kpis = calcularKpis(movimientos, { mermaPctDefault: 17, pesoBolsaDefaultKg: 0 });
+    expect(kpis.bolsasTeoricas).toBe(0);
   });
 });

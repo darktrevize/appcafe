@@ -24,6 +24,13 @@ export interface Kpis {
   totalVerdeIngresado: number;
   tostadoRecibido: number;
   verdeConsumidoTeorico: number;
+  bolsasEntregadas: number;
+  bolsasTeoricas: number;
+}
+
+export interface KpisConfig {
+  mermaPctDefault: number;
+  pesoBolsaDefaultKg: number;
 }
 
 export function calcularKgTostado(bolsas: number, pesoBolsaKg: number): number {
@@ -52,7 +59,7 @@ export function calcularArrastre(movimientos: Movimiento[]): MovimientoConSaldo[
   });
 }
 
-export function calcularKpis(movimientos: Movimiento[]): Kpis {
+export function calcularKpis(movimientos: Movimiento[], config: KpisConfig): Kpis {
   const conSaldo = calcularArrastre(movimientos);
   const stockVerdeRemanente = conSaldo.length > 0 ? conSaldo[conSaldo.length - 1].saldoVerde : 0;
 
@@ -68,5 +75,26 @@ export function calcularKpis(movimientos: Movimiento[]): Kpis {
     .filter((m) => m.tipo === 'recepcion_tostado')
     .reduce((acc, m) => acc + (m.kgVerdeConsumido ?? 0), 0);
 
-  return { stockVerdeRemanente, totalVerdeIngresado, tostadoRecibido, verdeConsumidoTeorico };
+  const bolsasEntregadas = movimientos
+    .filter((m) => m.tipo === 'recepcion_tostado')
+    .reduce((acc, m) => acc + (m.bolsas ?? 0), 0);
+
+  // Verde remanente -> tostado esperado es la relación inversa de calcularVerdeConsumido
+  // (que va de tostado -> verde necesario). El remanente se clampea a 0 porque un saldo
+  // negativo (ya señalizado en la UI) no debe traducirse en bolsas negativas, y se guarda
+  // contra pesoBolsaDefaultKg <= 0 para no devolver Infinity/NaN.
+  const bolsasTeoricas =
+    config.pesoBolsaDefaultKg <= 0
+      ? 0
+      : (Math.max(stockVerdeRemanente, 0) * (1 - config.mermaPctDefault / 100)) /
+        config.pesoBolsaDefaultKg;
+
+  return {
+    stockVerdeRemanente,
+    totalVerdeIngresado,
+    tostadoRecibido,
+    verdeConsumidoTeorico,
+    bolsasEntregadas,
+    bolsasTeoricas,
+  };
 }
