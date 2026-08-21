@@ -9,7 +9,8 @@ acceso a la app puede borrar sin dejar rastro.
 
 Se pide: exigir un código de autorización + el nombre de quien borra, y dejar un log
 de todas las eliminaciones, visible permanentemente en una columna a la izquierda,
-en todas las páginas de la app.
+en todas las páginas **autenticadas** de la app (dashboard y configuración — `/login`
+queda afuera a propósito, ver sección de reestructuración de rutas más abajo).
 
 ## Cambios
 
@@ -23,6 +24,7 @@ export const eliminacionesLog = sqliteTable('eliminaciones_log', {
   nombre: text('nombre').notNull(),
   eliminadoEn: text('eliminado_en').notNull().default(sql`CURRENT_TIMESTAMP`),
   movimientoId: integer('movimiento_id').notNull(),
+  movimientoCreatedAt: text('movimiento_created_at').notNull(),
   tipo: text('tipo', {
     enum: ['saldo_inicial', 'ingreso_verde', 'recepcion_tostado'],
   }).notNull(),
@@ -40,7 +42,14 @@ export const eliminacionesLog = sqliteTable('eliminaciones_log', {
 
 Es una **copia** de los datos del movimiento en el momento del borrado, no una FK a
 `movimientos` — el movimiento original va a dejar de existir, así que el log tiene que
-sobrevivirlo con su propia copia de los campos relevantes.
+sobrevivirlo con su propia copia de los campos relevantes. `movimientoCreatedAt` copia
+el `createdAt` original del movimiento (cuándo se cargó), distinto de `eliminadoEn`
+(cuándo se borró) — sin esto se perdería ese dato del registro auditado.
+
+`EliminacionLog` (el tipo TypeScript de una fila de esta tabla) se define como interfaz
+escrita a mano en `lib/calculo.ts`, junto a `Movimiento` — mismo patrón que ya usa ese
+archivo (`lib/calculo.ts:3`, `export interface Movimiento { ... }`), no un tipo inferido
+del schema de Drizzle.
 
 Después de este cambio hay que correr `npm run db:generate && npm run db:push` (local) y,
 en el paso de despliegue, aplicar la misma migración contra el Turso de producción.
@@ -57,13 +66,22 @@ ordenado por `eliminadoEn` descendente (más reciente primero).
 Flujo:
 1. Si `codigo !== process.env.DELETE_CODE` → devuelve `{ success: false, error: 'Código incorrecto.' }` sin tocar la base.
 2. Si `nombre` está vacío (trim) → devuelve `{ success: false, error: 'Ingresá tu nombre.' }`.
-3. Lee el movimiento por `id` (si no existe, error genérico igual que hoy).
+3. Lee el movimiento por `id`. **Esto es comportamiento nuevo, no una réplica de algo
+   existente**: hoy `eliminarMovimiento` no verifica existencia — un `delete().where(eq(id))`
+   sobre un id inexistente no matchea filas y aun así devuelve `{ success: true }`
+   (`lib/actions.ts:67-76`). Con el log, sí importa: si el `select` por `id` no devuelve
+   nada, devolver `{ success: false, error: 'No se pudo eliminar el movimiento.' }` (mismo
+   mensaje que ya usa el catch block existente) sin insertar nada en el log ni intentar el
+   delete.
 4. Inserta en `eliminacionesLog` una fila con `nombre`, `movimientoId: id`, y los campos
-   copiados del movimiento leído.
+   copiados del movimiento leído (incluyendo `movimientoCreatedAt`).
 5. Borra el movimiento.
 6. `revalidatePath('/')` y `revalidatePath('/configuracion')` — mismo patrón que ya usa
-   `actualizarConfiguracion` (`lib/actions.ts:90-91`) para que la sidebar del log se
-   actualice se esté donde se esté parado.
+   `actualizarConfiguracion` (`lib/actions.ts:90-91`). Es la primera vez en este código que
+   un **layout** (no una página) hace su propio fetch de datos; revalidar la ruta hija
+   fuerza el re-render del layout compartido igual, porque ambas páginas ya declaran
+   `export const dynamic = 'force-dynamic'`. Si en la verificación manual se ve la sidebar
+   desactualizada después de borrar, el fallback es `revalidatePath('/', 'layout')`.
 
 No se envuelve explícitamente en una transacción manual: `@libsql/client` con Drizzle no
 tiene transacciones interactivas simples en este setup (no se usan en ningún otro lado del
@@ -109,8 +127,16 @@ legible en `es-AR` (ej. `21/08/2026 14:32`).
 
 Se crea un route group `app/(app)/`:
 - `app/(app)/layout.tsx` (nuevo) — obtiene el log (`obtenerEliminaciones()`) y renderiza
-  un layout de dos columnas: `<aside>` fija a la izquierda con el log
-  (`components/eliminaciones-sidebar.tsx`, nuevo) + el contenido (`children`) a la derecha.
+  un layout de dos columnas: `<aside>` con el log (`components/eliminaciones-sidebar.tsx`,
+  nuevo) a la izquierda + el contenido (`children`) a la derecha.
+  - `app/layout.tsx` (root) sigue envolviendo todo en `<div className="mx-auto max-w-6xl
+    ...">` — ese wrapper centrado no se toca. El layout de `(app)` se anida **adentro**
+    de ese wrapper, así que la sidebar no es viewport-fixed (no tendría sentido dentro de
+    una columna centrada de ancho máximo); es un flex-row de dos columnas dentro del
+    mismo `max-w-6xl`: `<div className="flex gap-6 items-start">`, con
+    `<aside className="w-64 shrink-0 sticky top-8">` (sticky, no fixed, para que
+    acompañe el scroll sin salirse del wrapper) y el contenido en
+    `<div className="min-w-0 flex-1">`.
 - `app/page.tsx` → se mueve a `app/(app)/page.tsx` (sin cambios de contenido).
 - `app/configuracion/page.tsx` → se mueve a `app/(app)/configuracion/page.tsx` (sin
   cambios de contenido).
