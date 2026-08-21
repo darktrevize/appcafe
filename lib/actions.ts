@@ -3,10 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { eq } from 'drizzle-orm';
 import { db } from './db/client';
-import { movimientos, configuracion } from './db/schema';
+import { movimientos, configuracion, eliminacionesLog } from './db/schema';
 import { obtenerConfiguracion } from './db/queries';
 import { calcularKgTostado, calcularVerdeConsumido } from './calculo';
-import { crearMovimientoSchema, configuracionSchema } from './validation';
+import { crearMovimientoSchema, configuracionSchema, eliminarMovimientoSchema } from './validation';
 
 export type ActionResult = { success: true } | { success: false; error: string };
 
@@ -64,10 +64,51 @@ export async function crearMovimiento(input: unknown): Promise<ActionResult> {
   }
 }
 
-export async function eliminarMovimiento(id: number): Promise<ActionResult> {
+export async function eliminarMovimiento(
+  id: number,
+  codigo: string,
+  nombre: string
+): Promise<ActionResult> {
+  const parsed = eliminarMovimientoSchema.safeParse({ codigo, nombre });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  }
+
+  if (parsed.data.codigo !== (process.env.DELETE_CODE ?? '')) {
+    return { success: false, error: 'Código incorrecto.' };
+  }
+
   try {
+    const [movimiento] = await db.select().from(movimientos).where(eq(movimientos.id, id));
+    if (!movimiento) {
+      return { success: false, error: 'No se pudo eliminar el movimiento.' };
+    }
+
+    // eliminadoEn is set explicitly here (UTC, trailing "Z") instead of relying on the
+    // column's CURRENT_TIMESTAMP default — same pattern movimientos.createdAt already
+    // uses in crearMovimiento above. The "Z" suffix matters: formatFechaHora (Task 6)
+    // needs a value Date() can parse as UTC unambiguously to convert to Argentina time.
+    await db.insert(eliminacionesLog).values({
+      nombre: parsed.data.nombre,
+      eliminadoEn: new Date().toISOString(),
+      movimientoId: movimiento.id,
+      movimientoCreatedAt: movimiento.createdAt,
+      tipo: movimiento.tipo,
+      fecha: movimiento.fecha,
+      numeroRemito: movimiento.numeroRemito,
+      kgVerde: movimiento.kgVerde,
+      bolsas: movimiento.bolsas,
+      pesoBolsaKg: movimiento.pesoBolsaKg,
+      kgTostado: movimiento.kgTostado,
+      mermaPctAplicada: movimiento.mermaPctAplicada,
+      kgVerdeConsumido: movimiento.kgVerdeConsumido,
+      notas: movimiento.notas,
+    });
+
     await db.delete(movimientos).where(eq(movimientos.id, id));
+
     revalidatePath('/');
+    revalidatePath('/configuracion');
     return { success: true };
   } catch (err) {
     console.error('Error al eliminar movimiento', err);
