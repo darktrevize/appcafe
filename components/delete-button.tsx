@@ -1,25 +1,18 @@
 'use client';
 
-import { useTransition } from 'react';
-import { eliminarMovimiento } from '@/lib/actions';
+import { useState } from 'react';
 import { Button } from './ui/button';
+import { DeleteMovementModal } from './delete-movement-modal';
 
 export function DeleteButton({ id }: { id: number }) {
-  const [isPending, startTransition] = useTransition();
-
-  function handleClick() {
-    if (!window.confirm('¿Eliminar este movimiento? Esta acción no se puede deshacer.')) return;
-    startTransition(async () => {
-      const result = await eliminarMovimiento(id);
-      if (!result.success) {
-        window.alert(result.error);
-      }
-    });
-  }
+  const [open, setOpen] = useState(false);
 
   return (
-    <Button variant="danger" onClick={handleClick} disabled={isPending} className="px-2 py-1 text-xs">
-      {isPending ? '…' : 'Borrar'}
-    </Button>
+    <>
+      <Button variant="danger" onClick={() => setOpen(true)} className="px-2 py-1 text-xs">
+        Borrar
+      </Button>
+      {open && <DeleteMovementModal id={id} onClose={() => setOpen(false)} />}
+    </>
   );
 }
