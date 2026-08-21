@@ -181,13 +181,27 @@ git commit -m "feat: add eliminarMovimientoSchema"
 
 - [ ] **Step 1: Replace the function**
 
-In `lib/actions.ts`, update the imports at the top:
+In `lib/actions.ts`, the current imports (lines 1-9) are:
 
 ```ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { eq } from 'drizzle-orm';
 import { db } from './db/client';
-import { movimientos, configuracion, eliminacionesLog } from './db/schema';
+import { movimientos, configuracion } from './db/schema';
 import { obtenerConfiguracion } from './db/queries';
 import { calcularKgTostado, calcularVerdeConsumido } from './calculo';
+import { crearMovimientoSchema, configuracionSchema } from './validation';
+```
+
+Keep `revalidatePath` and `eq` as-is (both are still used — `revalidatePath` by `crearMovimiento`/`actualizarConfiguracion`, `eq` by the new `eliminarMovimiento` body below). Only change the schema and validation import lines, adding the two new names:
+
+```ts
+import { movimientos, configuracion, eliminacionesLog } from './db/schema';
+```
+
+```ts
 import { crearMovimientoSchema, configuracionSchema, eliminarMovimientoSchema } from './validation';
 ```
 
@@ -214,8 +228,13 @@ export async function eliminarMovimiento(
       return { success: false, error: 'No se pudo eliminar el movimiento.' };
     }
 
+    // eliminadoEn is set explicitly here (UTC, trailing "Z") instead of relying on the
+    // column's CURRENT_TIMESTAMP default — same pattern movimientos.createdAt already
+    // uses in crearMovimiento above. The "Z" suffix matters: formatFechaHora (Task 6)
+    // needs a value Date() can parse as UTC unambiguously to convert to Argentina time.
     await db.insert(eliminacionesLog).values({
       nombre: parsed.data.nombre,
+      eliminadoEn: new Date().toISOString(),
       movimientoId: movimiento.id,
       movimientoCreatedAt: movimiento.createdAt,
       tipo: movimiento.tipo,
@@ -271,6 +290,7 @@ Append to `lib/format.ts`:
 ```ts
 export function formatFechaHora(iso: string): string {
   return new Date(iso).toLocaleString('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -279,6 +299,11 @@ export function formatFechaHora(iso: string): string {
   });
 }
 ```
+
+`timeZone` is pinned explicitly because the server (Vercel, and the deployed DB) runs in UTC —
+without it, `eliminadoEn` (stored/passed as a UTC ISO string, see Task 5) would render in the
+server's UTC offset while labeled `es-AR`, showing a time ~3 hours off from actual Argentina
+local time.
 
 - [ ] **Step 2: Commit**
 
@@ -523,8 +548,12 @@ Expected: succeeds. `/` and `/configuracion` keep the same URLs (route groups do
 
 - [ ] **Step 4: Commit**
 
+`app/configuracion/` may or may not still exist at this point depending on whether Step 1's
+optional `rmdir` ran — use a repo-wide `git add -A` instead of pinning a pathspec to it, so
+the commit doesn't fail with "pathspec did not match any files" either way:
+
 ```bash
-git add -A "app/(app)" app/configuracion
+git add -A
 git commit -m "feat: add persistent eliminaciones sidebar via (app) route group"
 ```
 
@@ -565,7 +594,7 @@ Use the project's preview tooling to start the dev server, log in, and:
 2. Create a throwaway test movement on the dashboard.
 3. Click "Borrar" on it — confirm the modal opens (not a browser `confirm()` dialog).
 4. Submit with a wrong code — confirm it shows "Código incorrecto." inline and the movement is NOT deleted (still in the ledger).
-5. Submit with the correct code (from `.env.local`) and a name — confirm the movement disappears from the ledger and a new entry appears at the top of the sidebar with that name, a timestamp, and the right movement summary.
+5. Submit with the correct code (from `.env.local`) and a name — confirm the movement disappears from the ledger and a new entry appears at the top of the sidebar with that name, a timestamp, and the right movement summary. Check that the displayed hour roughly matches your actual local time in Argentina (not off by ~3 hours) — this validates the `timeZone: 'America/Argentina/Buenos_Aires'` fix in `formatFechaHora`.
 6. Navigate to `/configuracion` — confirm the new log entry is still visible there too (validates the `revalidatePath` + shared-layout fetch).
 
 No commit needed for this step — it's verification only.
