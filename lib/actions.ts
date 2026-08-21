@@ -88,24 +88,25 @@ export async function eliminarMovimiento(
     // column's CURRENT_TIMESTAMP default — same pattern movimientos.createdAt already
     // uses in crearMovimiento above. The "Z" suffix matters: formatFechaHora (Task 6)
     // needs a value Date() can parse as UTC unambiguously to convert to Argentina time.
-    await db.insert(eliminacionesLog).values({
-      nombre: parsed.data.nombre,
-      eliminadoEn: new Date().toISOString(),
-      movimientoId: movimiento.id,
-      movimientoCreatedAt: movimiento.createdAt,
-      tipo: movimiento.tipo,
-      fecha: movimiento.fecha,
-      numeroRemito: movimiento.numeroRemito,
-      kgVerde: movimiento.kgVerde,
-      bolsas: movimiento.bolsas,
-      pesoBolsaKg: movimiento.pesoBolsaKg,
-      kgTostado: movimiento.kgTostado,
-      mermaPctAplicada: movimiento.mermaPctAplicada,
-      kgVerdeConsumido: movimiento.kgVerdeConsumido,
-      notas: movimiento.notas,
-    });
-
-    await db.delete(movimientos).where(eq(movimientos.id, id));
+    await db.batch([
+      db.insert(eliminacionesLog).values({
+        nombre: parsed.data.nombre,
+        eliminadoEn: new Date().toISOString(),
+        movimientoId: movimiento.id,
+        movimientoCreatedAt: movimiento.createdAt,
+        tipo: movimiento.tipo,
+        fecha: movimiento.fecha,
+        numeroRemito: movimiento.numeroRemito,
+        kgVerde: movimiento.kgVerde,
+        bolsas: movimiento.bolsas,
+        pesoBolsaKg: movimiento.pesoBolsaKg,
+        kgTostado: movimiento.kgTostado,
+        mermaPctAplicada: movimiento.mermaPctAplicada,
+        kgVerdeConsumido: movimiento.kgVerdeConsumido,
+        notas: movimiento.notas,
+      }),
+      db.delete(movimientos).where(eq(movimientos.id, id)),
+    ]);
 
     revalidatePath('/');
     revalidatePath('/configuracion');
