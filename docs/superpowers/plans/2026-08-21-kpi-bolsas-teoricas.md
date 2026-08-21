@@ -120,7 +120,7 @@ describe('calcularKpis', () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npm run test -- lib/calculo.test.ts`
-Expected: FAIL — TypeScript error, `calcularKpis` doesn't accept a second argument yet (or, if TS doesn't block the test runner, a runtime `undefined` failure reading `config.mermaPctDefault`).
+Expected: FAIL — `vitest run` transpiles via esbuild without type-checking, so the extra `config` argument doesn't cause a compile error, and the current `calcularKpis` doesn't touch its second parameter at all (so nothing throws either). Instead, the returned object simply has no `bolsasEntregadas`/`bolsasTeoricas` keys, so the new assertions (`toBe(25)`, `toBeCloseTo(27.67, 2)`, etc.) fail as `undefined` vs. the expected number, and the "no movimientos" `toEqual` fails because the expected object has two keys the real one lacks.
 
 - [ ] **Step 3: Update `Kpis` interface and `calcularKpis` implementation**
 
