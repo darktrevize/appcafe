@@ -25,3 +25,25 @@ export const movimientos = sqliteTable('movimientos', {
   kgVerdeConsumido: real('kg_verde_consumido'),
   notas: text('notas'),
 });
+
+export const eliminacionesLog = sqliteTable('eliminaciones_log', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  nombre: text('nombre').notNull(),
+  eliminadoEn: text('eliminado_en')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  movimientoId: integer('movimiento_id').notNull(),
+  movimientoCreatedAt: text('movimiento_created_at').notNull(),
+  tipo: text('tipo', {
+    enum: ['saldo_inicial', 'ingreso_verde', 'recepcion_tostado'],
+  }).notNull(),
+  fecha: text('fecha').notNull(),
+  numeroRemito: text('numero_remito'),
+  kgVerde: real('kg_verde'),
+  bolsas: integer('bolsas'),
+  pesoBolsaKg: real('peso_bolsa_kg'),
+  kgTostado: real('kg_tostado'),
+  mermaPctAplicada: real('merma_pct_aplicada'),
+  kgVerdeConsumido: real('kg_verde_consumido'),
+  notas: text('notas'),
+});
