@@ -19,6 +19,24 @@ export interface MovimientoConSaldo extends Movimiento {
   saldoVerde: number;
 }
 
+export interface EliminacionLog {
+  id: number;
+  nombre: string;
+  eliminadoEn: string;
+  movimientoId: number;
+  movimientoCreatedAt: string;
+  tipo: TipoMovimiento;
+  fecha: string;
+  numeroRemito: string | null;
+  kgVerde: number | null;
+  bolsas: number | null;
+  pesoBolsaKg: number | null;
+  kgTostado: number | null;
+  mermaPctAplicada: number | null;
+  kgVerdeConsumido: number | null;
+  notas: string | null;
+}
+
 export interface Kpis {
   stockVerdeRemanente: number;
   totalVerdeIngresado: number;
