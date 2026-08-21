@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, type FormEvent } from 'react';
 import { eliminarMovimiento } from '@/lib/actions';
 import { Card } from './ui/card';
 import { Label } from './ui/label';
@@ -19,7 +19,8 @@ export function DeleteMovementModal({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function handleConfirm() {
+  function handleConfirm(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setError(null);
     startTransition(async () => {
       const result = await eliminarMovimiento(id, codigo, nombre);
@@ -45,7 +46,7 @@ export function DeleteMovementModal({
           </div>
         )}
 
-        <div className="space-y-4">
+        <form onSubmit={handleConfirm} className="space-y-4">
           <div>
             <Label htmlFor="nombre">Nombre</Label>
             <Input
@@ -65,14 +66,14 @@ export function DeleteMovementModal({
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={onClose} disabled={isPending}>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
               Cancelar
             </Button>
-            <Button variant="danger" onClick={handleConfirm} disabled={isPending}>
+            <Button type="submit" variant="danger" disabled={isPending}>
               {isPending ? '…' : 'Eliminar'}
             </Button>
           </div>
-        </div>
+        </form>
       </Card>
     </div>
   );
