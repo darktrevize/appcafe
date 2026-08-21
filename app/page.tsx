@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const [movimientos, config] = await Promise.all([obtenerMovimientos(), obtenerConfiguracion()]);
-  const kpis = calcularKpis(movimientos);
+  const kpis = calcularKpis(movimientos, config);
 
   return (
     <div className="space-y-8">
