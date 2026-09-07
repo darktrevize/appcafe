@@ -4,10 +4,11 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { DeleteButton } from './delete-button';
 
-const tipoBadge: Record<Movimiento['tipo'], { label: string; variant: 'inicial' | 'verde' | 'tostado' }> = {
+const tipoBadge: Record<Movimiento['tipo'], { label: string; variant: 'inicial' | 'verde' | 'tostado' | 'neutral' }> = {
   saldo_inicial: { label: 'Saldo inicial', variant: 'inicial' },
   ingreso_verde: { label: 'Ingreso verde', variant: 'verde' },
   recepcion_tostado: { label: 'Recepción tostado', variant: 'tostado' },
+  salida_bolsa_cafe: { label: 'Salida Bolsa Café', variant: 'neutral' },
 };
 
 export function LedgerTable({ movimientos }: { movimientos: Movimiento[] }) {
@@ -50,12 +51,16 @@ export function LedgerTable({ movimientos }: { movimientos: Movimiento[] }) {
                 <td className="px-4 py-3">
                   {m.tipo === 'recepcion_tostado'
                     ? `${m.bolsas} bolsas × ${formatKg(m.pesoBolsaKg)} kg (merma ${m.mermaPctAplicada}%)`
-                    : (m.notas ?? '—')}
+                    : m.tipo === 'salida_bolsa_cafe'
+                      ? `${m.bolsas} bolsas`
+                      : (m.notas ?? '—')}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {m.tipo === 'recepcion_tostado'
                     ? `-${formatKg(m.kgVerdeConsumido)}`
-                    : `+${formatKg(m.kgVerde)}`}
+                    : m.kgVerde !== null
+                      ? `+${formatKg(m.kgVerde)}`
+                      : '—'}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {m.tipo === 'recepcion_tostado' ? `+${formatKg(m.kgTostado)}` : '—'}
