@@ -3,14 +3,13 @@
 import { useMemo, useState, useTransition, type FormEvent } from 'react';
 import { crearMovimiento } from '@/lib/actions';
 import { calcularKgTostado, calcularVerdeConsumido } from '@/lib/calculo';
+import type { TipoMovimiento } from '@/lib/calculo';
 import type { CrearMovimientoInput } from '@/lib/validation';
 import { Card } from './ui/card';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
 import { Button } from './ui/button';
-
-type TipoMovimiento = 'saldo_inicial' | 'ingreso_verde' | 'recepcion_tostado';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -76,6 +75,16 @@ export function MovementForm({
       };
     }
 
+    if (tipo === 'salida_bolsa_cafe') {
+      return {
+        tipo,
+        fecha,
+        bolsas: Number(bolsas),
+        numeroRemito: numeroRemito || undefined,
+        notas: notasInput,
+      };
+    }
+
     return {
       tipo,
       fecha,
@@ -118,6 +127,7 @@ export function MovementForm({
             <option value="saldo_inicial">Saldo inicial</option>
             <option value="ingreso_verde">Ingreso de café verde</option>
             <option value="recepcion_tostado">Recepción de café tostado</option>
+            <option value="salida_bolsa_cafe">Salida Bolsa Café</option>
           </Select>
         </div>
 
@@ -133,7 +143,7 @@ export function MovementForm({
                 id="numeroRemito"
                 value={numeroRemito}
                 onChange={(e) => setNumeroRemito(e.target.value)}
-                required
+                required={tipo !== 'salida_bolsa_cafe'}
               />
             </div>
           )}
@@ -206,6 +216,20 @@ export function MovementForm({
               </div>
             )}
           </>
+        )}
+
+        {tipo === 'salida_bolsa_cafe' && (
+          <div>
+            <Label htmlFor="bolsasSalida">Cantidad de bolsas</Label>
+            <Input
+              id="bolsasSalida"
+              type="number"
+              min="0"
+              value={bolsas}
+              onChange={(e) => setBolsas(e.target.value)}
+              required
+            />
+          </div>
         )}
 
         <div>
