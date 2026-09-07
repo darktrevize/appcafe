@@ -42,10 +42,16 @@ export const TIPOS_MOVIMIENTO = [
 ```
 
 Y ambas columnas `tipo` pasan a `text('tipo', { enum: TIPOS_MOVIMIENTO })`. `eliminacionesLog`
-**tiene que** aceptar el mismo valor — si no, borrar un movimiento `salida_bolsa_cafe` fallaría
-al intentar loguearlo antes de borrarlo (el insert a `eliminaciones_log` violaría el check del
-enum). No se agregan columnas nuevas: el movimiento usa el campo `bolsas` (ya existe, `integer`
-nullable), y `numeroRemito`/`notas` (ya nullable, cubren el caso "remito opcional").
+**tiene que** aceptar el mismo valor. **Aclaración importante**: `text(..., { enum: [...] })`
+de Drizzle para SQLite es solo a nivel TypeScript — no genera un `CHECK` en la base (confirmado
+en `drizzle/0000_steady_major_mapleleaf.sql`/`0001_last_screwball.sql`: la columna es
+`text NOT NULL` a secas). El problema real si solo se actualiza el enum de `movimientos` es un
+**error de compilación de TypeScript** en `eliminarMovimiento` (`lib/actions.ts`, el `tipo:
+movimiento.tipo,` dentro del insert a `eliminacionesLog`): `movimiento.tipo` pasaría a ser del
+tipo `TipoMovimiento` de 4 valores, pero el insert a `eliminacionesLog` seguiría tipado con el
+enum viejo de 3 valores. No se agregan columnas nuevas: el movimiento usa el campo `bolsas` (ya
+existe, `integer` nullable), y `numeroRemito`/`notas` (ya nullable, cubren el caso "remito
+opcional").
 
 Después de este cambio: `npm run db:generate && npm run db:push` (local), y en el paso de
 despliegue aplicar contra Turso de producción — mismo flujo que la tabla `eliminaciones_log`.
@@ -53,9 +59,14 @@ despliegue aplicar contra Turso de producción — mismo flujo que la tabla `eli
 ### `lib/calculo.ts`
 
 - `TipoMovimiento` pasa a derivarse del array compartido:
-  `export type TipoMovimiento = (typeof TIPOS_MOVIMIENTO)[number];` (importando
-  `TIPOS_MOVIMIENTO` desde `./db/schema`) — evita mantener el union type a mano en un tercer
-  lugar además de los dos enums de schema.
+  `export type TipoMovimiento = (typeof TIPOS_MOVIMIENTO)[number];` — evita mantener el union
+  type a mano en un tercer lugar además de los dos enums de schema. Requiere un **import de
+  valor** (no `import type`) de `TIPOS_MOVIMIENTO` desde `./db/schema`, porque `typeof
+  TIPOS_MOVIMIENTO` necesita el binding real, no solo su tipo:
+  `import { TIPOS_MOVIMIENTO } from './db/schema';`. No genera riesgo de import circular
+  (`lib/db/schema.ts` solo importa de `drizzle-orm`/`drizzle-orm/sqlite-core`) ni infla el
+  bundle del cliente — al usarse solo dentro de un `typeof` en posición de tipo, se elide en la
+  compilación (`isolatedModules: true` en `tsconfig.json`).
 - `calcularArrastre`: sin cambios de lógica. El `if/else if` ya solo actúa sobre
   `saldo_inicial`/`ingreso_verde`/`recepcion_tostado`; `salida_bolsa_cafe` cae fuera de ambas
   ramas y no afecta `saldoVerde` (correcto — este movimiento no toca café verde). Solo hace
@@ -121,41 +132,74 @@ mecanismo de control de flujo.)
   línea de todos modos para agregar el cuarto valor, así que se elimina la duplicación en vez
   de mantenerla sincronizada a mano en un tercer lugar.
 - Nueva opción en el `<Select>`: `<option value="salida_bolsa_cafe">Salida Bolsa Café</option>`.
-- El bloque de "Cantidad de bolsas" (hoy solo se muestra si `tipo === 'recepcion_tostado'`,
-  junto con peso por bolsa y merma) se separa: el campo "Cantidad de bolsas" se muestra si
-  `tipo === 'recepcion_tostado' || tipo === 'salida_bolsa_cafe'`; los campos "Peso por bolsa" y
-  "Merma aplicada" (y el preview de kg tostado/verde consumido) siguen mostrándose solo para
-  `recepcion_tostado`.
+- El bloque de "Cantidad de bolsas" (hoy junto con peso por bolsa y merma, dentro de un único
+  `sm:grid-cols-3` condicionado a `tipo === 'recepcion_tostado'`) se separa en dos bloques
+  independientes:
+  - Un bloque nuevo, mostrado cuando `tipo === 'salida_bolsa_cafe'`, con **solo** el campo
+    "Cantidad de bolsas" en un `<div>` simple (sin grid de 3 columnas, ya que va solo — igual
+    de ancho que el bloque de "Kg de café verde" que usan `saldo_inicial`/`ingreso_verde`).
+  - El bloque existente de `recepcion_tostado` (bolsas + peso por bolsa + merma + preview) se
+    mantiene sin cambios, condicionado exactamente igual que hoy (`tipo === 'recepcion_tostado'`).
+  - Los dos bloques usan el mismo estado `bolsas`/`setBolsas` ya existente — no se duplica.
 - El campo "Número de remito" (hoy `required` para cualquier tipo `!== 'saldo_inicial'`) deja
-  de ser `required` cuando `tipo === 'salida_bolsa_cafe'` — sigue visible pero opcional.
-- `buildInput()` gana una rama para `salida_bolsa_cafe`: `{ tipo, fecha, bolsas: Number(bolsas),
-  numeroRemito: numeroRemito || undefined, notas: notasInput }`.
+  de ser `required` cuando `tipo === 'salida_bolsa_cafe'` — sigue visible pero opcional. La
+  condición del atributo `required` pasa a `tipo !== 'saldo_inicial' && tipo !==
+  'salida_bolsa_cafe'`.
+- `buildInput()` (líneas 54-86): hoy es un `if (recepcion_tostado) {...} else if
+  (ingreso_verde) {...} else {...}` donde el `else` final asume `saldo_inicial` sin chequearlo.
+  Con 4 tipos posibles, ese `else` final ya no puede cubrir dos casos (`saldo_inicial` y
+  `salida_bolsa_cafe`) con formas de retorno distintas (uno tiene `kgVerde`, el otro `bolsas`).
+  Se agrega un `else if (tipo === 'salida_bolsa_cafe')` explícito ANTES del `else` final:
+  ```ts
+  if (tipo === 'salida_bolsa_cafe') {
+    return {
+      tipo,
+      fecha,
+      bolsas: Number(bolsas),
+      numeroRemito: numeroRemito || undefined,
+      notas: notasInput,
+    };
+  }
+  ```
+  dejando el `else` final (sin condición) exclusivamente para `saldo_inicial`, igual que hoy.
 
 ### `components/kpi-cards.tsx`
 
-Nueva card "Stock Bolsas Tostadas", con el mismo patrón visual condicional que "Stock Verde
-Remanente" (badge "Saldo negativo" + texto rojo si `kpis.stockBolsasTostadas < 0`). Con 7 cards
-en vez de 6, la grilla pasa de `lg:grid-cols-3` a `lg:grid-cols-4` (filas de 4 y 3, en vez de
-3+3+1).
+Nueva card "Stock Bolsas Tostadas", **última** de las 7 (después de "Bolsas Teóricas
+(remanente)"), con el mismo patrón visual condicional que "Stock Verde Remanente" (badge "Saldo
+negativo" + texto rojo si `kpis.stockBolsasTostadas < 0`) — pero es un conteo de bolsas, no kg:
+usa `formatBolsasEntero(kpis.stockBolsasTostadas)` (mismo formatter que ya usa "Bolsas
+Entregadas"), **sin** el sufijo `" kg"` que sí lleva "Stock Verde Remanente". Con 7 cards en vez
+de 6, la grilla pasa de `lg:grid-cols-3` a `lg:grid-cols-4` (filas de 4 y 3, en vez de 3+3+1).
 
 ### `components/ledger-table.tsx`
 
-- `tipoBadge` gana una entrada: `salida_bolsa_cafe: { label: 'Salida Bolsa Café', variant:
-  'neutral' }` (variante `neutral` ya existe en `Badge`, no hace falta agregar un color nuevo).
+- `tipoBadge` (línea 7) está tipado como `Record<Movimiento['tipo'], { label: string; variant:
+  'inicial' | 'verde' | 'tostado' }>` — el union de `variant` hoy solo cubre los 3 colores en
+  uso. Hay que ampliarlo a `'inicial' | 'verde' | 'tostado' | 'neutral'` para poder agregar
+  `salida_bolsa_cafe: { label: 'Salida Bolsa Café', variant: 'neutral' }` (variante `neutral`
+  ya existe en `Badge`, no hace falta un color nuevo — solo ensanchar esta anotación local).
 - Columna "Detalle": para `salida_bolsa_cafe` se muestra `${m.bolsas} bolsas` (igual de simple
   que el resto, sin el detalle de peso/merma que sí tiene `recepcion_tostado`).
-- Columnas "Verde ±" y "Tostado +": siguen su lógica actual sin cambios — para cualquier tipo
-  que no sea `recepcion_tostado`, "Tostado +" ya muestra `—`, y `salida_bolsa_cafe` no tiene
-  `kgVerde` ni `kgVerdeConsumido`, así que "Verde ±" también cae en la rama `—`/`+undefined`.
-  Para evitar mostrar `+undefined` (bug ya latente para cualquier tipo sin `kgVerde`, pero que
-  hasta ahora nunca ocurría porque los únicos tipos eran `saldo_inicial`/`ingreso_verde`
-  —ambos con `kgVerde`— y `recepcion_tostado` —cubierto por la otra rama—), la condición de
-  "Verde ±" pasa a `m.tipo === 'recepcion_tostado' ? ... : m.kgVerde !== null ? \`+${formatKg(m.kgVerde)}\` : '—'`.
+- Columna "Tostado +": sigue su lógica actual sin cambios — ya muestra `—` para cualquier tipo
+  que no sea `recepcion_tostado`, `salida_bolsa_cafe` incluido.
+- Columna "Verde ±": `formatKg` ya devuelve `'—'` para `null` y `Movimiento.kgVerde` es
+  `number | null` (nunca `undefined`), así que hoy esta columna para `salida_bolsa_cafe`
+  renderizaría `+—` (con el signo `+` pegado al guion) — no es un crash, pero es un texto
+  confuso. Se limpia cambiando la condición a
+  `m.tipo === 'recepcion_tostado' ? \`-${formatKg(m.kgVerdeConsumido)}\` : m.kgVerde !== null ? \`+${formatKg(m.kgVerde)}\` : '—'`
+  para que `salida_bolsa_cafe` (sin `kgVerde`) muestre `—` en vez de `+—`.
 
 ### `components/eliminaciones-sidebar.tsx`
 
-- `tipoLabel` gana `salida_bolsa_cafe: 'Salida Bolsa Café'`.
-- `resumen()` gana una rama: para `salida_bolsa_cafe` retorna `${log.bolsas ?? '—'} bolsas`.
+- `tipoLabel` gana `salida_bolsa_cafe: 'Salida Bolsa Café'` (es un `Record<EliminacionLog['tipo'],
+  string>` con un valor por tipo — a diferencia de `tipoBadge` en ledger-table.tsx, no tiene un
+  union restringido en el value, así que agregar esta entrada no requiere ensanchar ningún tipo).
+- `resumen()` (líneas 11-16) hoy es `if (recepcion_tostado) {...} return \`${kgVerde} kg\`;` —
+  el `return` final asume que cualquier otro tipo tiene `kgVerde`, lo cual deja de ser cierto
+  para `salida_bolsa_cafe`. Se agrega un `if (tipo === 'salida_bolsa_cafe')` explícito ANTES del
+  `return` final: `if (log.tipo === 'salida_bolsa_cafe') return \`${log.bolsas ?? '—'} bolsas\`;`,
+  dejando el `return` final (sin condición) para `saldo_inicial`/`ingreso_verde` como hoy.
 
 ## Fuera de alcance
 
@@ -168,6 +212,11 @@ en vez de 6, la grilla pasa de `lg:grid-cols-3` a `lg:grid-cols-4` (filas de 4 y
 
 ## Testing
 
+- `lib/calculo.test.ts`, ajuste a un test existente roto por el cambio: la prueba `'devuelve
+  ceros cuando no hay movimientos'` (líneas 107-116) hace `toEqual` contra un objeto literal de
+  6 campos; al agregar `bolsasSalidas`/`stockBolsasTostadas` a `Kpis`, el resultado real tendrá
+  8 campos y el `toEqual` fallará. El objeto esperado pasa a incluir
+  `bolsasSalidas: 0, stockBolsasTostadas: 0`.
 - `lib/calculo.test.ts`: casos nuevos para `calcularKpis` cubriendo:
   - `bolsasSalidas` suma correctamente sobre varios movimientos `salida_bolsa_cafe`.
   - `stockBolsasTostadas` = `bolsasEntregadas - bolsasSalidas`, positivo.
