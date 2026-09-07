@@ -26,10 +26,19 @@ export const recepcionTostadoSchema = z.object({
   notas: z.string().optional(),
 });
 
+export const salidaBolsaCafeSchema = z.object({
+  tipo: z.literal('salida_bolsa_cafe'),
+  fecha: z.string().min(1, 'La fecha es obligatoria'),
+  bolsas: z.coerce.number().positive('La cantidad de bolsas debe ser mayor a 0'),
+  numeroRemito: z.string().optional(),
+  notas: z.string().optional(),
+});
+
 export const crearMovimientoSchema = z.discriminatedUnion('tipo', [
   saldoInicialSchema,
   ingresoVerdeSchema,
   recepcionTostadoSchema,
+  salidaBolsaCafeSchema,
 ]);
 
 export type CrearMovimientoInput = z.infer<typeof crearMovimientoSchema>;
