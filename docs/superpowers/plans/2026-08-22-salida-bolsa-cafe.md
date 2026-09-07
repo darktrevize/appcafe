@@ -245,13 +245,15 @@ Expected: PASS (all tests, including the pre-existing ones and the new ones abov
 - [ ] **Step 5: Run the build to catch any remaining type errors**
 
 Run: `npm run build`
-Expected: this will FAIL at this point — other files (`lib/validation.ts`, `lib/actions.ts`,
-`components/movement-form.tsx`, `components/kpi-cards.tsx`, `components/ledger-table.tsx`,
-`components/eliminaciones-sidebar.tsx`) don't yet account for the 4th `TipoMovimiento` value
-and will show type errors (e.g. `eliminarMovimiento`'s insert into `eliminacionesLog`, or
-`tipoBadge`'s `Record` no longer being exhaustive once `Movimiento['tipo']` has a 4th member).
-This is expected and fixed by later tasks — confirm the errors are all in those files and
-nothing else, then proceed.
+Expected: this will FAIL at this point — specifically in `components/ledger-table.tsx` and
+`components/eliminaciones-sidebar.tsx`, whose `Record<Movimiento['tipo'], ...>` /
+`Record<EliminacionLog['tipo'], ...>` objects (`tipoBadge`, `tipoLabel`) are no longer
+exhaustive once the union has a 4th member. The other files that reference `Movimiento`/`Kpis`/
+`TipoMovimiento` (`lib/validation.ts`, `lib/actions.ts`, `components/movement-form.tsx`,
+`components/kpi-cards.tsx`) consume them structurally, without exhaustively enumerating the
+union, so they don't error yet at this point — that's expected too, not a sign something's
+missing. Confirm the only two errors are in `ledger-table.tsx`/`eliminaciones-sidebar.tsx`
+(both fixed in Tasks 7–8), then proceed.
 
 - [ ] **Step 6: Commit**
 
@@ -302,8 +304,15 @@ export const crearMovimientoSchema = z.discriminatedUnion('tipo', [
 - [ ] **Step 2: Run the build**
 
 Run: `npm run build`
-Expected: still fails (same reasons as Task 2 Step 5, minus nothing new introduced here) —
-`lib/validation.ts` itself should have no errors after this change.
+Expected: still fails, and this step actually introduces NEW errors on top of Task 2's two
+(`ledger-table.tsx`, `eliminaciones-sidebar.tsx`) — widening `CrearMovimientoInput` to 4
+discriminated members breaks the implicit "else means recepcion_tostado" narrowing in
+`crearMovimiento`'s trailing `else` branch (`lib/actions.ts`), so `data.mermaPct`/
+`data.pesoBolsaKg` there now fail to type-check (that branch's `data` is no longer narrowed to
+just `recepcion_tostado`'s shape). This is expected — `lib/validation.ts` itself has no errors,
+but this task's change is exactly what makes Task 4's restructuring of `crearMovimiento`
+necessary, not just cosmetic. Confirm the new errors are in `lib/actions.ts` (plus the two
+carried over from Task 2), then proceed — Task 4 fixes all of them.
 
 - [ ] **Step 3: Commit**
 
@@ -399,8 +408,12 @@ movement is already auditable without any code change here.
 - [ ] **Step 2: Run the build**
 
 Run: `npm run build`
-Expected: still fails — remaining errors should now only be in `components/movement-form.tsx`,
-`components/kpi-cards.tsx`, `components/ledger-table.tsx`, `components/eliminaciones-sidebar.tsx`.
+Expected: still fails — but the errors this fixed (Task 3's new `lib/actions.ts` ones) are
+gone now. Remaining errors should be only the same two as after Task 2:
+`components/ledger-table.tsx` and `components/eliminaciones-sidebar.tsx`.
+`components/movement-form.tsx` and `components/kpi-cards.tsx` do NOT error at this point — they
+consume the types structurally and aren't affected until their own tasks add code that
+references `salida_bolsa_cafe` explicitly.
 
 - [ ] **Step 3: Commit**
 
@@ -567,8 +580,9 @@ reading the function before moving on.
 - [ ] **Step 7: Run the build**
 
 Run: `npm run build`
-Expected: still fails — remaining errors should now only be in `components/kpi-cards.tsx`,
-`components/ledger-table.tsx`, `components/eliminaciones-sidebar.tsx`.
+Expected: still fails — but only the same two errors as before this task:
+`components/ledger-table.tsx` and `components/eliminaciones-sidebar.tsx`.
+`components/kpi-cards.tsx` does NOT error yet (Task 6 is the one that touches it).
 
 - [ ] **Step 8: Commit**
 
