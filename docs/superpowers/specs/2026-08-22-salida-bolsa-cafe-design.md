@@ -145,11 +145,13 @@ mecanismo de control de flujo.)
   de ser `required` cuando `tipo === 'salida_bolsa_cafe'` — sigue visible pero opcional. La
   condición del atributo `required` pasa a `tipo !== 'saldo_inicial' && tipo !==
   'salida_bolsa_cafe'`.
-- `buildInput()` (líneas 54-86): hoy es un `if (recepcion_tostado) {...} else if
-  (ingreso_verde) {...} else {...}` donde el `else` final asume `saldo_inicial` sin chequearlo.
-  Con 4 tipos posibles, ese `else` final ya no puede cubrir dos casos (`saldo_inicial` y
-  `salida_bolsa_cafe`) con formas de retorno distintas (uno tiene `kgVerde`, el otro `bolsas`).
-  Se agrega un `else if (tipo === 'salida_bolsa_cafe')` explícito ANTES del `else` final:
+- `buildInput()` (líneas 54-86): hoy son tres `if` independientes con `return` temprano —
+  `if (recepcion_tostado) { return {...}; }`, `if (ingreso_verde) { return {...}; }` — sin
+  `else`/`else if`, seguidos de un `return` final incondicional que asume `saldo_inicial` sin
+  chequearlo. Con 4 tipos posibles, ese `return` final ya no puede cubrir dos casos
+  (`saldo_inicial` y `salida_bolsa_cafe`) con formas de retorno distintas (uno tiene `kgVerde`,
+  el otro `bolsas`). Se agrega un `if (tipo === 'salida_bolsa_cafe')` explícito con su propio
+  `return`, ANTES del `return` final:
   ```ts
   if (tipo === 'salida_bolsa_cafe') {
     return {
