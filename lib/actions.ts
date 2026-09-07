@@ -36,7 +36,7 @@ export async function crearMovimiento(input: unknown): Promise<ActionResult> {
         kgVerde: data.kgVerde,
         notas: data.notas || null,
       });
-    } else {
+    } else if (data.tipo === 'recepcion_tostado') {
       const config = await obtenerConfiguracion();
       const mermaPct = data.mermaPct ?? config.mermaPctDefault;
       const kgTostado = calcularKgTostado(data.bolsas, data.pesoBolsaKg);
@@ -52,6 +52,15 @@ export async function crearMovimiento(input: unknown): Promise<ActionResult> {
         kgTostado,
         mermaPctAplicada: mermaPct,
         kgVerdeConsumido,
+        notas: data.notas || null,
+      });
+    } else {
+      await db.insert(movimientos).values({
+        tipo: 'salida_bolsa_cafe',
+        fecha: data.fecha,
+        createdAt: new Date().toISOString(),
+        numeroRemito: data.numeroRemito || null,
+        bolsas: data.bolsas,
         notas: data.notas || null,
       });
     }
