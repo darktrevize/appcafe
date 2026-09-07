@@ -78,6 +78,16 @@ describe('calcularArrastre', () => {
     const resultado = calcularArrastre(movimientos);
     expect(resultado[1].saldoVerde).toBeCloseTo(-62.29, 2);
   });
+
+  it('salida_bolsa_cafe no afecta el saldo verde', () => {
+    const movimientos: Movimiento[] = [
+      mov({ id: 1, tipo: 'saldo_inicial', fecha: '2026-01-01', kgVerde: 100 }),
+      mov({ id: 2, tipo: 'salida_bolsa_cafe', fecha: '2026-01-02', bolsas: 5 }),
+    ];
+
+    const resultado = calcularArrastre(movimientos);
+    expect(resultado[1].saldoVerde).toBe(100);
+  });
 });
 
 describe('calcularKpis', () => {
@@ -112,6 +122,8 @@ describe('calcularKpis', () => {
       verdeConsumidoTeorico: 0,
       bolsasEntregadas: 0,
       bolsasTeoricas: 0,
+      bolsasSalidas: 0,
+      stockBolsasTostadas: 0,
     });
   });
 
@@ -170,5 +182,33 @@ describe('calcularKpis', () => {
 
     const kpis = calcularKpis(movimientos, { mermaPctDefault: 17, pesoBolsaDefaultKg: 0 });
     expect(kpis.bolsasTeoricas).toBe(0);
+  });
+
+  it('bolsasSalidas suma correctamente sobre varios movimientos salida_bolsa_cafe', () => {
+    const movimientos: Movimiento[] = [
+      mov({ id: 1, tipo: 'recepcion_tostado', fecha: '2026-01-01', bolsas: 20, kgTostado: 60, kgVerdeConsumido: 72.29 }),
+      mov({ id: 2, tipo: 'salida_bolsa_cafe', fecha: '2026-01-05', bolsas: 5 }),
+      mov({ id: 3, tipo: 'salida_bolsa_cafe', fecha: '2026-01-10', bolsas: 7 }),
+    ];
+
+    expect(calcularKpis(movimientos, config).bolsasSalidas).toBe(12);
+  });
+
+  it('stockBolsasTostadas es bolsasEntregadas menos bolsasSalidas', () => {
+    const movimientos: Movimiento[] = [
+      mov({ id: 1, tipo: 'recepcion_tostado', fecha: '2026-01-01', bolsas: 20, kgTostado: 60, kgVerdeConsumido: 72.29 }),
+      mov({ id: 2, tipo: 'salida_bolsa_cafe', fecha: '2026-01-05', bolsas: 5 }),
+    ];
+
+    expect(calcularKpis(movimientos, config).stockBolsasTostadas).toBe(15);
+  });
+
+  it('stockBolsasTostadas puede quedar negativo, sin clampear', () => {
+    const movimientos: Movimiento[] = [
+      mov({ id: 1, tipo: 'recepcion_tostado', fecha: '2026-01-01', bolsas: 5, kgTostado: 15, kgVerdeConsumido: 18.07 }),
+      mov({ id: 2, tipo: 'salida_bolsa_cafe', fecha: '2026-01-05', bolsas: 8 }),
+    ];
+
+    expect(calcularKpis(movimientos, config).stockBolsasTostadas).toBe(-3);
   });
 });

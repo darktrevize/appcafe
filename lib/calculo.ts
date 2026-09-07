@@ -1,4 +1,6 @@
-export type TipoMovimiento = 'saldo_inicial' | 'ingreso_verde' | 'recepcion_tostado';
+import { TIPOS_MOVIMIENTO } from './db/schema';
+
+export type TipoMovimiento = (typeof TIPOS_MOVIMIENTO)[number];
 
 export interface Movimiento {
   id: number;
@@ -44,6 +46,8 @@ export interface Kpis {
   verdeConsumidoTeorico: number;
   bolsasEntregadas: number;
   bolsasTeoricas: number;
+  bolsasSalidas: number;
+  stockBolsasTostadas: number;
 }
 
 export interface KpisConfig {
@@ -107,6 +111,14 @@ export function calcularKpis(movimientos: Movimiento[], config: KpisConfig): Kpi
       : (Math.max(stockVerdeRemanente, 0) * (1 - config.mermaPctDefault / 100)) /
         config.pesoBolsaDefaultKg;
 
+  const bolsasSalidas = movimientos
+    .filter((m) => m.tipo === 'salida_bolsa_cafe')
+    .reduce((acc, m) => acc + (m.bolsas ?? 0), 0);
+
+  // Sin clamp — puede quedar negativo, igual que stockVerdeRemanente, si se registran más
+  // bolsas de salida que las efectivamente recibidas del tostadero.
+  const stockBolsasTostadas = bolsasEntregadas - bolsasSalidas;
+
   return {
     stockVerdeRemanente,
     totalVerdeIngresado,
@@ -114,5 +126,7 @@ export function calcularKpis(movimientos: Movimiento[], config: KpisConfig): Kpi
     verdeConsumidoTeorico,
     bolsasEntregadas,
     bolsasTeoricas,
+    bolsasSalidas,
+    stockBolsasTostadas,
   };
 }
