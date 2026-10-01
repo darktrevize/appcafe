@@ -20,6 +20,7 @@ function mov(overrides: Partial<Movimiento>): Movimiento {
     kgTostado: null,
     mermaPctAplicada: null,
     kgVerdeConsumido: null,
+    sucursal: null,
     notas: null,
     ...overrides,
   };

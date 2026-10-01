@@ -14,6 +14,7 @@ export interface Movimiento {
   kgTostado: number | null;
   mermaPctAplicada: number | null;
   kgVerdeConsumido: number | null;
+  sucursal: string | null;
   notas: string | null;
 }
 
@@ -36,6 +37,7 @@ export interface EliminacionLog {
   kgTostado: number | null;
   mermaPctAplicada: number | null;
   kgVerdeConsumido: number | null;
+  sucursal: string | null;
   notas: string | null;
 }
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SUCURSALES } from './sucursales';
 
 export const saldoInicialSchema = z.object({
   tipo: z.literal('saldo_inicial'),
@@ -29,7 +30,11 @@ export const recepcionTostadoSchema = z.object({
 export const salidaBolsaCafeSchema = z.object({
   tipo: z.literal('salida_bolsa_cafe'),
   fecha: z.string().min(1, 'La fecha es obligatoria'),
-  bolsas: z.coerce.number().positive('La cantidad de bolsas debe ser mayor a 0'),
+  bolsas: z.coerce
+    .number()
+    .int('La cantidad de bolsas debe ser un número entero')
+    .positive('La cantidad de bolsas debe ser mayor a 0'),
+  sucursal: z.enum(SUCURSALES, { errorMap: () => ({ message: 'Elegí la franquicia' }) }),
   numeroRemito: z.string().optional(),
   notas: z.string().optional(),
 });

@@ -6,6 +6,7 @@ import { db } from './db/client';
 import { movimientos, configuracion, eliminacionesLog } from './db/schema';
 import { obtenerConfiguracion } from './db/queries';
 import { calcularKgTostado, calcularVerdeConsumido } from './calculo';
+import { PESO_BOLSA_EGRESO_KG } from './sucursales';
 import { crearMovimientoSchema, configuracionSchema, eliminarMovimientoSchema } from './validation';
 
 export type ActionResult = { success: true } | { success: false; error: string };
@@ -61,6 +62,8 @@ export async function crearMovimiento(input: unknown): Promise<ActionResult> {
         createdAt: new Date().toISOString(),
         numeroRemito: data.numeroRemito || null,
         bolsas: data.bolsas,
+        pesoBolsaKg: PESO_BOLSA_EGRESO_KG,
+        sucursal: data.sucursal,
         notas: data.notas || null,
       });
     }
@@ -112,6 +115,7 @@ export async function eliminarMovimiento(
         kgTostado: movimiento.kgTostado,
         mermaPctAplicada: movimiento.mermaPctAplicada,
         kgVerdeConsumido: movimiento.kgVerdeConsumido,
+        sucursal: movimiento.sucursal,
         notas: movimiento.notas,
       }),
       db.delete(movimientos).where(eq(movimientos.id, id)),

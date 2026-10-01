@@ -5,6 +5,7 @@ import { crearMovimiento } from '@/lib/actions';
 import { calcularKgTostado, calcularVerdeConsumido } from '@/lib/calculo';
 import type { TipoMovimiento } from '@/lib/calculo';
 import type { CrearMovimientoInput } from '@/lib/validation';
+import { SUCURSALES, PESO_BOLSA_EGRESO_KG, type Sucursal } from '@/lib/sucursales';
 import { Card } from './ui/card';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
@@ -27,6 +28,7 @@ export function MovementForm({
   const [bolsas, setBolsas] = useState('');
   const [pesoBolsaKg, setPesoBolsaKg] = useState(String(pesoBolsaDefaultKg));
   const [mermaPct, setMermaPct] = useState(String(mermaPctDefault));
+  const [sucursal, setSucursal] = useState('');
   const [notas, setNotas] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -47,6 +49,7 @@ export function MovementForm({
     setNumeroRemito('');
     setKgVerde('');
     setBolsas('');
+    setSucursal('');
     setNotas('');
   }
 
@@ -80,6 +83,7 @@ export function MovementForm({
         tipo,
         fecha,
         bolsas: Number(bolsas),
+        sucursal: sucursal as Sucursal,
         numeroRemito: numeroRemito || undefined,
         notas: notasInput,
       };
@@ -127,7 +131,7 @@ export function MovementForm({
             <option value="saldo_inicial">Saldo inicial</option>
             <option value="ingreso_verde">Ingreso de café verde</option>
             <option value="recepcion_tostado">Recepción de café tostado</option>
-            <option value="salida_bolsa_cafe">Salida Bolsa Café</option>
+            <option value="salida_bolsa_cafe">Egreso Café (a franquicia)</option>
           </Select>
         </div>
 
@@ -219,16 +223,32 @@ export function MovementForm({
         )}
 
         {tipo === 'salida_bolsa_cafe' && (
-          <div>
-            <Label htmlFor="bolsasSalida">Cantidad de bolsas</Label>
-            <Input
-              id="bolsasSalida"
-              type="number"
-              min="0"
-              value={bolsas}
-              onChange={(e) => setBolsas(e.target.value)}
-              required
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="sucursal">Franquicia</Label>
+              <Select id="sucursal" value={sucursal} onChange={(e) => setSucursal(e.target.value)} required>
+                <option value="" disabled>
+                  Elegí la franquicia…
+                </option>
+                {SUCURSALES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="bolsasSalida">Cantidad de bolsas (x {PESO_BOLSA_EGRESO_KG} kg)</Label>
+              <Input
+                id="bolsasSalida"
+                type="number"
+                min="1"
+                step="1"
+                value={bolsas}
+                onChange={(e) => setBolsas(e.target.value)}
+                required
+              />
+            </div>
           </div>
         )}
 

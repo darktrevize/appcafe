@@ -6,7 +6,7 @@ const tipoLabel: Record<EliminacionLog['tipo'], string> = {
   saldo_inicial: 'Saldo inicial',
   ingreso_verde: 'Ingreso verde',
   recepcion_tostado: 'Recepción tostado',
-  salida_bolsa_cafe: 'Salida Bolsa Café',
+  salida_bolsa_cafe: 'Egreso Café',
 };
 
 function resumen(log: EliminacionLog): string {
@@ -14,7 +14,7 @@ function resumen(log: EliminacionLog): string {
     return `${log.bolsas ?? '—'} bolsas × ${formatKg(log.pesoBolsaKg)} kg`;
   }
   if (log.tipo === 'salida_bolsa_cafe') {
-    return `${log.bolsas ?? '—'} bolsas`;
+    return `${log.bolsas ?? '—'} bolsas → ${log.sucursal ?? '—'}`;
   }
   return `${formatKg(log.kgVerde)} kg`;
 }

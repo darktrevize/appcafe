@@ -28,6 +28,7 @@ export const movimientos = sqliteTable('movimientos', {
   kgTostado: real('kg_tostado'),
   mermaPctAplicada: real('merma_pct_aplicada'),
   kgVerdeConsumido: real('kg_verde_consumido'),
+  sucursal: text('sucursal'),
   notas: text('notas'),
 });
 
@@ -48,5 +49,6 @@ export const eliminacionesLog = sqliteTable('eliminaciones_log', {
   kgTostado: real('kg_tostado'),
   mermaPctAplicada: real('merma_pct_aplicada'),
   kgVerdeConsumido: real('kg_verde_consumido'),
+  sucursal: text('sucursal'),
   notas: text('notas'),
 });

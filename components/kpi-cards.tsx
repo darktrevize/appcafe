@@ -31,7 +31,7 @@ export function KpiCards({ kpis }: { kpis: Kpis }) {
         </p>
       </Card>
       <Card>
-        <p className="text-sm text-neutral-400">Tostado Recibido</p>
+        <p className="text-sm text-neutral-400">Tostado Recibido CDP</p>
         <p className="mt-2 text-2xl font-semibold text-neutral-100">
           {formatKg(kpis.tostadoRecibido)} kg
         </p>
@@ -43,20 +43,20 @@ export function KpiCards({ kpis }: { kpis: Kpis }) {
         </p>
       </Card>
       <Card>
-        <p className="text-sm text-neutral-400">Bolsas Entregadas</p>
+        <p className="text-sm text-neutral-400">Bolsas Recibidas CDP</p>
         <p className="mt-2 text-2xl font-semibold text-neutral-100">
           {formatBolsasEntero(kpis.bolsasEntregadas)}
         </p>
       </Card>
       <Card>
-        <p className="text-sm text-neutral-400">Bolsas Teóricas (remanente)</p>
+        <p className="text-sm text-neutral-400">Entrega a Locales (bolsas x3 kg)</p>
         <p className="mt-2 text-2xl font-semibold text-neutral-100">
-          {formatBolsasTeoricas(kpis.bolsasTeoricas)}
+          {formatBolsasEntero(kpis.bolsasSalidas)}
         </p>
       </Card>
       <Card className={stockBolsasNegativo ? 'border-red-800' : undefined}>
         <div className="flex items-center justify-between">
-          <p className="text-sm text-neutral-400">Stock Bolsas Tostadas</p>
+          <p className="text-sm text-neutral-400">Stock CDP (bolsas)</p>
           {stockBolsasNegativo && <Badge variant="alerta">Saldo negativo</Badge>}
         </div>
         <p
@@ -66,6 +66,12 @@ export function KpiCards({ kpis }: { kpis: Kpis }) {
           )}
         >
           {formatBolsasEntero(kpis.stockBolsasTostadas)}
+        </p>
+      </Card>
+      <Card>
+        <p className="text-sm text-neutral-400">Bolsas Teóricas (remanente)</p>
+        <p className="mt-2 text-2xl font-semibold text-neutral-100">
+          {formatBolsasTeoricas(kpis.bolsasTeoricas)}
         </p>
       </Card>
     </div>
