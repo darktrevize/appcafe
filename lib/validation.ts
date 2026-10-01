@@ -57,7 +57,6 @@ export type ConfiguracionInput = z.infer<typeof configuracionSchema>;
 
 export const eliminarMovimientoSchema = z.object({
   codigo: z.string().min(1, 'Ingresá el código'),
-  nombre: z.string().min(1, 'Ingresá tu nombre'),
 });
 
 export type EliminarMovimientoInput = z.infer<typeof eliminarMovimientoSchema>;

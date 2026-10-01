@@ -76,12 +76,11 @@ export async function crearMovimiento(input: unknown): Promise<ActionResult> {
   }
 }
 
-export async function eliminarMovimiento(
-  id: number,
-  codigo: string,
-  nombre: string
-): Promise<ActionResult> {
-  const parsed = eliminarMovimientoSchema.safeParse({ codigo, nombre });
+// La app la usa una sola persona, así que toda eliminación queda registrada a su nombre.
+const USUARIO_ELIMINACION = 'SOL';
+
+export async function eliminarMovimiento(id: number, codigo: string): Promise<ActionResult> {
+  const parsed = eliminarMovimientoSchema.safeParse({ codigo });
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
   }
@@ -102,7 +101,7 @@ export async function eliminarMovimiento(
     // needs a value Date() can parse as UTC unambiguously to convert to Argentina time.
     await db.batch([
       db.insert(eliminacionesLog).values({
-        nombre: parsed.data.nombre,
+        nombre: USUARIO_ELIMINACION,
         eliminadoEn: new Date().toISOString(),
         movimientoId: movimiento.id,
         movimientoCreatedAt: movimiento.createdAt,

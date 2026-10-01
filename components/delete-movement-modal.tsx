@@ -14,7 +14,6 @@ export function DeleteMovementModal({
   id: number;
   onClose: () => void;
 }) {
-  const [nombre, setNombre] = useState('');
   const [codigo, setCodigo] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -23,7 +22,7 @@ export function DeleteMovementModal({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await eliminarMovimiento(id, codigo, nombre);
+      const result = await eliminarMovimiento(id, codigo);
       if (!result.success) {
         setError(result.error);
         return;
@@ -37,7 +36,7 @@ export function DeleteMovementModal({
       <Card className="w-full max-w-sm">
         <h2 className="mb-1 text-lg font-semibold text-neutral-100">Eliminar movimiento</h2>
         <p className="mb-4 text-sm text-neutral-400">
-          Esta acción no se puede deshacer. Ingresá tu nombre y el código de autorización.
+          Esta acción no se puede deshacer. Ingresá el código de autorización.
         </p>
 
         {error && (
@@ -48,21 +47,13 @@ export function DeleteMovementModal({
 
         <form onSubmit={handleConfirm} className="space-y-4">
           <div>
-            <Label htmlFor="nombre">Nombre</Label>
-            <Input
-              id="nombre"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div>
             <Label htmlFor="codigo">Código</Label>
             <Input
               id="codigo"
               type="password"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
+              autoFocus
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
