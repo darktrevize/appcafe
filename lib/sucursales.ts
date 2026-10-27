@@ -22,6 +22,8 @@ export const SUCURSALES = [
   'Monte Grande',
   'Costa Rica',
   'Barolo',
+  'Pani Feroz',
+  'Pani Cantina',
 ] as const;
 
 export type Sucursal = (typeof SUCURSALES)[number];
